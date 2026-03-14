@@ -8,6 +8,7 @@ import {
   type MomentumAsset,
 } from "@/lib/momentum-data";
 import { generateForecast } from "./actions";
+import { DashboardLayout } from "@/components/dashboard-layout";
 
 type FilterType = "all" | "hot" | "fading" | "stocks" | "crypto";
 
@@ -81,44 +82,13 @@ export default function MomentumPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <svg
-                className="h-5 w-5 text-primary-foreground"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                />
-              </svg>
-            </div>
-            <span className="font-mono text-xl font-semibold tracking-tight">
-              TrendIQ
-            </span>
-          </div>
-          <nav className="flex items-center gap-6">
-            <span className="text-sm text-muted-foreground">Dashboard</span>
-            <span className="text-sm font-medium text-primary">Momentum</span>
-            <span className="text-sm text-muted-foreground">Portfolio</span>
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">
+    <DashboardLayout>
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
             Momentum Strategy
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Track top-performing assets by momentum score and get AI-powered
             forecasts
           </p>
@@ -467,7 +437,7 @@ export default function MomentumPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
