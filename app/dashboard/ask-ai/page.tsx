@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 
 interface Message {
   id: string;
@@ -9,22 +9,26 @@ interface Message {
   content: string;
 }
 
+interface LivePrice {
+  symbol: string;
+  price: number;
+  change24h: number;
+}
+
 const quickQuestions = [
   "What signals are active right now?",
   "Should I buy BTC now?",
   "What is the current risk level?",
-  "Which token has the best momentum right now?",
+  "Which token has the best momentum?",
 ];
 
-const mockResponses: Record<string, string> = {
-  "what signals are active right now?":
-    "Currently, I'm tracking 4 active signals: BTC/USD has a strong BUY signal (87% confidence) due to RSI oversold + whale accumulation. SOL/USD also has a BUY signal (82%) from a breakout on volume spike. ETH/USD is in HOLD territory with neutral momentum. ARB/USD has a SELL signal due to overbought conditions.",
-  "should i buy btc now?":
-    "Based on my analysis, BTC is showing bullish signals. The RSI is recovering from oversold territory, whale wallets are accumulating, and on-chain metrics show strong holder conviction. However, always consider your risk tolerance and position sizing. The current ML confidence for a BUY signal is 87%.",
-  "what is the current risk level?":
-    "Your portfolio risk is currently rated as MEDIUM. Portfolio volatility is at 42%, concentration risk is elevated at 68% (consider diversifying), liquidity risk is low at 24%, and leverage exposure is minimal at 15%. Your max drawdown over the past 7 days was -8.4%.",
-  "which token has the best momentum right now?":
-    "According to my momentum scanner, the top 3 tokens by momentum score are: 1) SOL/USD with score 89/100 - Strong Up outlook, 2) ARB/USD with score 82/100 - Likely Up outlook, 3) AVAX/USD with score 76/100 - Likely Up outlook. SOL has the strongest volume confirmation and bullish price action.",
+const CG_IDS = "bitcoin,ethereum,solana,avalanche-2,binancecoin";
+const CG_MAP: Record<string, string> = {
+  bitcoin: "BTC",
+  ethereum: "ETH",
+  solana: "SOL",
+  "avalanche-2": "AVAX",
+  binancecoin: "BNB",
 };
 
 export default function AskAIPage() {
@@ -33,11 +37,12 @@ export default function AskAIPage() {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello Alex! I'm monitoring live prices via Binance. How can I help you trade smarter today?",
+        "Hello! I'm TrendIQ AI, your crypto trading assistant. I have access to live market data and can help you analyze signals, assess risks, and make informed trading decisions. What would you like to know?",
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [livePrices, setLivePrices] = useState<LivePrice[]>([]);
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,53 +51,131 @@ export default function AskAIPage() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    async function fetchPrices() {
+      try {
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${CG_IDS}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`,
+          { headers: { "x-cg-demo-api-key": "CG-4mhu23ZJbY2MH2xuXwDF2FPa" } }
+        );
+        const data = await res.json();
+        const prices: LivePrice[] = data.map((c: { id: string; current_price: number; price_change_percentage_24h: number }) => ({
+          symbol: CG_MAP[c.id] || c.id.toUpperCase(),
+          price: c.current_price,
+          change24h: c.price_change_percentage_24h || 0,
+        }));
+        setLivePrices(prices);
+      } catch (err) {
+        console.warn("Price fetch error:", err);
+      }
+    }
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const buildContext = () => {
+    if (livePrices.length === 0) return "";
+    return `Live Prices: ${livePrices.map(p => `${p.symbol}: $${p.price.toLocaleString()} (${p.change24h >= 0 ? "+" : ""}${p.change24h.toFixed(2)}%)`).join(", ")}`;
+  };
+
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: input.trim(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const lowerInput = input.toLowerCase().trim();
-      let response =
-        mockResponses[lowerInput] ||
-        `I've analyzed your question about "${input}". Based on current market conditions, I recommend monitoring the momentum scanner and risk metrics before making any decisions. Would you like me to elaborate on any specific aspect?`;
+    const aiMessageId = (Date.now() + 1).toString();
+    setMessages((prev) => [
+      ...prev,
+      { id: aiMessageId, role: "assistant", content: "" },
+    ]);
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-      };
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: currentInput, context: buildContext() }),
+      });
 
-      setMessages((prev) => [...prev, aiMessage]);
+      if (!res.ok) throw new Error("Failed to get response");
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullResponse += chunk;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMessageId ? { ...m, content: fullResponse } : m
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error("AI error:", error);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMessageId
+            ? { ...m, content: "I apologize, but I encountered an error. Please try again." }
+            : m
+        )
+      );
+    } finally {
       setIsTyping(false);
-    }, 1000 + Math.random() * 1000);
+    }
   };
 
   const handleQuickQuestion = (q: string) => {
     setInput(q);
-    setTimeout(() => {
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-      sendMessage();
-    }, 100);
   };
 
   return (
     <div className="animate-fade-in flex h-[calc(100vh-140px)] flex-col">
-      <div className="mb-1">
-        <h1 className="text-base font-bold text-foreground">Ask AI</h1>
-        <p className="text-sm text-muted-foreground/60">
-          Chat with the TrendIQ intelligence engine
-        </p>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-foreground">Ask AI</h1>
+          <p className="text-sm text-muted-foreground">
+            Chat with TrendIQ intelligence engine
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+          <Sparkles className="h-3 w-3" />
+          <span>Powered by Grok</span>
+        </div>
       </div>
+
+      {/* Live Prices Bar */}
+      {livePrices.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-3 rounded-lg border border-border bg-card px-4 py-2.5">
+          <span className="text-xs text-muted-foreground">Live:</span>
+          {livePrices.map((p) => (
+            <div key={p.symbol} className="flex items-center gap-1.5 text-xs">
+              <span className="font-medium text-foreground">{p.symbol}</span>
+              <span className="font-mono text-muted-foreground">
+                ${p.price >= 1000 ? p.price.toLocaleString("en-US", { maximumFractionDigits: 0 }) : p.price.toFixed(2)}
+              </span>
+              <span className={`font-mono font-medium ${p.change24h >= 0 ? "text-success" : "text-destructive"}`}>
+                {p.change24h >= 0 ? "+" : ""}{p.change24h.toFixed(2)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Chat Container */}
       <div
@@ -114,17 +197,11 @@ export default function AskAIPage() {
                   TrendIQ AI
                 </div>
               )}
-              {message.content}
+              {message.content || (
+                <span className="animate-pulse text-muted-foreground">Analyzing...</span>
+              )}
             </div>
           ))}
-          {isTyping && (
-            <div className="max-w-[80%] rounded-xl rounded-bl-sm bg-accent px-3.5 py-3 text-sm text-muted-foreground">
-              <div className="mb-1.5 text-[10px] font-semibold text-primary">
-                TrendIQ AI
-              </div>
-              <span className="animate-pulse">Analyzing...</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -134,13 +211,15 @@ export default function AskAIPage() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
           placeholder="Ask about signals, strategies, risk..."
-          className="flex-1 rounded-lg border border-border bg-accent px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/30 focus:outline-none"
+          className="flex-1 rounded-lg border border-border bg-accent px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/30 focus:outline-none"
+          disabled={isTyping}
         />
         <button
           onClick={sendMessage}
-          className="flex-shrink-0 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          disabled={isTyping || !input.trim()}
+          className="flex-shrink-0 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           <Send className="h-4 w-4" />
         </button>
@@ -152,7 +231,8 @@ export default function AskAIPage() {
           <button
             key={q}
             onClick={() => handleQuickQuestion(q)}
-            className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground/60 transition-colors hover:border-border/80 hover:text-muted-foreground"
+            disabled={isTyping}
+            className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:text-foreground disabled:opacity-50"
           >
             {q}
           </button>
