@@ -16,7 +16,12 @@
     "zod": "^3.23.8",
     "sonner": "^1.7.0",
     "lucide-react": "^0.468.0",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "ai": "^6.0.0",
+    "@ai-sdk/xai": "^1.0.0",
+    "recharts": "^2.15.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@types/node": "^22",

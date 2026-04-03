@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trend IQ",
-  description: "Sign in to Trend IQ",
+  title: "Trend IQ - AI-Powered Trading Strategies",
+  description: "Analyze trading strategies with AI-powered insights and historical backtesting. Master momentum, breakout, scalping, range, and trend-following strategies.",
 };
 
 export default function RootLayout({

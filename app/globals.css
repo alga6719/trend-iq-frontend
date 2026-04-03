@@ -1,44 +1,36 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #171717;
-  --radius: 0.5rem;
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
 }
 
-.dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --card: #0a0a0a;
-  --card-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #171717;
-  --secondary: #262626;
-  --secondary-foreground: #fafafa;
-  --muted: #262626;
-  --muted-foreground: #a3a3a3;
-  --accent: #262626;
-  --accent-foreground: #fafafa;
-  --destructive: #7f1d1d;
+:root {
+  --background: #0c0f14;
+  --foreground: #f1f5f9;
+  --card: #131820;
+  --card-foreground: #f1f5f9;
+  --primary: #10b981;
+  --primary-foreground: #0c0f14;
+  --secondary: #1e2430;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e2430;
+  --muted-foreground: #94a3b8;
+  --accent: #3b82f6;
+  --accent-foreground: #f1f5f9;
+  --destructive: #ef4444;
   --destructive-foreground: #fafafa;
-  --border: #262626;
-  --input: #262626;
-  --ring: #d4d4d4;
+  --border: #2a3241;
+  --input: #1e2430;
+  --ring: #10b981;
+  --radius: 0.5rem;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --chart-1: #10b981;
+  --chart-2: #3b82f6;
+  --chart-3: #8b5cf6;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
 }
 
 * {
